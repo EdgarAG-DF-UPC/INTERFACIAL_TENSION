@@ -663,7 +663,7 @@ CONTAINS
 
         ! Toennies-Tang-Sheng
         ! open(17,file="/users/edgar/BUBBLES_NEW/TAULES/TTS.table")
-        open(17,file=trim(parent)//"TAULES/TTS.table")
+        open(17,file=trim(parent)//"/TAULES/TTS.table")
         read(17,*)
         read(17,*)
         read(17,*) VAR, a1(1), a1(2), a1(3)
