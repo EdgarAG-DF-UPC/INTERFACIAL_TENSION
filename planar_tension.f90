@@ -1,7 +1,7 @@
 ! Edgar Alvarez Galera
 ! Tensió superficial - sistema Li+Pb+He --- EAM (Awad) + TTS
 ! Data de creació: 10 d'abril del 2025
-! Última modificació: 06 / 05 / 2025
+! Última modificació: 26 / 09 / 2025
 
 PROGRAM ST
     USE omp_lib
@@ -116,6 +116,8 @@ PROGRAM ST
     INTEGER*4 :: count_0, count_1, count_rate, count_max
 !   PRINT ON EVERY STEP?
     LOGICAL PRINTALL, PRINTSNAP
+!   PARENT DIRECTORY:
+    CHARACTER*100 parent
 !   COMMON BLOCKS:
     COMMON/PbHePARAMS/aa,bb,cc,dd,ee,ff,gg,hh,ii,jj
     COMMON/PbPbPARAMS/aaa,rp,aim
@@ -143,6 +145,9 @@ PROGRAM ST
         read(14,*) force_field
         read(14,*) POTS, SETPBC
         read(14,*) PRINTALL, PRINTSNAP
+    close(14)
+    open(14, FILE="parent-directory")
+        read(14,*) parent
     close(14)
     dir = 3
     !   TRIEM LA FAMILIA DE POTENCIALS:
@@ -829,7 +834,8 @@ CONTAINS
         rp(4) = 9.01d0 !Angs
 
         ! Toennies-Tang-Sheng
-        open(17,file="/users/edgar/BUBBLES_NEW/TAULES/TTS.table")
+        ! /users/edgar/BUBBLES_NEW/
+        open(17,file=trim(parent)//"/TAULES/TTS.table")
         read(17,*)
         read(17,*)
         read(17,*) VAR, a1(1), a1(2), a1(3)
@@ -853,7 +859,8 @@ CONTAINS
         Re(3) = 5.608d0
         De(3) = 3.482d-5
         
-        open(97, file = "/users/edgar/BUBBLES_NEW/TAULES/Aim.Pb.table")
+        ! open(97, file = "/users/edgar/BUBBLES_NEW/TAULES/Aim.Pb.table")
+        open(97, file=trim(parent)//"/TAULES/Aim.Pb.table")
         do m = 0, 8
             read(97,*) aim, aaa(1,m), aaa(2,m), aaa(3,m)
         enddo
