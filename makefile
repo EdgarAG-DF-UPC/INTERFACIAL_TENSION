@@ -1,6 +1,7 @@
 objects = constants.o parametres.o distscompbc.o potencials.o integradors.o tensio.o altres.o
 compilador = gfortran
 OPT = -O3
+flags = -Wall -Wextra -fcheck=all -fimplicit-none
 
 
 
@@ -11,8 +12,17 @@ radius.x: radius.o $(objects)
 spherical_tension.x: spherical_tension.o $(objects)
 	$(compilador) -o spherical_tension.x $(OPT) spherical_tension.o $(objects) -fopenmp
 
+spherical_integral.x: constants.o tensio.o
+	$(compilador) spherical_integral.f90 -o spherical_integral.x $(OPT) constants.o tensio.o
+
 planar_tension.x: planar_tension.o $(objects)
 	$(compilador) -o planar_tension.x $(OPT) planar_tension.o $(objects) -fopenmp
+
+planar_integral.x: constants.o tensio.o
+	$(compilador) planar_integral.f90 -o planar_integral.x $(OPT) constants.o tensio.o
+
+tabulate_potentials.x: constants.o potencials.o parametres.o
+	$(compilador) $(flags) tabulate_potentials.f90 -o tabulate_potentials.x $(OPT) constants.o potencials.o parametres.o
 
 #############################################################################################################
 

@@ -296,6 +296,103 @@ REAL*8 FUNCTION der_pot_EAM_Pb(r)
     return
 END FUNCTION der_pot_EAM_Pb
 
+REAL*8 FUNCTION funcio(x, C, gamma, delta)
+    IMPLICIT NONE
+    REAL*8, intent(in) :: x, C, gamma, delta
+
+    funcio = C * dexp(-gamma * (x - 1d0)) / (1d0 + (x - delta)**20d0)
+
+    return
+END FUNCTION funcio
+REAL*8 FUNCTION factor(x, C, gamma, delta)
+    IMPLICIT NONE
+    REAL*8, intent(in) :: x, C, gamma, delta
+
+    factor = -(gamma + 20d0*(x - delta)**19d0 / (1d0 + (x - delta)**20d0))
+
+    return
+END FUNCTION factor
+REAL*8 FUNCTION pot_ZHOU_Pb(r)
+    IMPLICIT NONE
+    REAL*8, intent(in) :: r
+    ! REAL*8 re, fe, rhoe, alpha, beta, A, B, kappa, lambda, eta, FFe
+    ! REAL*8, dimension(0:3) :: Fn, F
+    REAL*8 funcio, x
+    REAL*8 re, fe, rhoe, rhos, alpha, beta, A, B, kappa, lambda, Fn(0:3), F(0:3), eta, FFe
+    COMMON /ZhouPARAMS/ re, fe, rhoe, rhos, alpha, beta, A, B, kappa, lambda, Fn, F, eta, FFe
+
+    x = r / re
+    pot_ZHOU_Pb = (funcio(x,A,alpha,kappa) - funcio(x,B,beta,lambda))
+
+    return
+END FUNCTION pot_ZHOU_Pb
+REAL*8 FUNCTION der_pot_ZHOU_Pb(r)
+    IMPLICIT NONE
+    REAL*8, intent(in) :: r
+    ! REAL*8 re, fe, rhoe, alpha, beta, A, B, kappa, lambda, eta, FFe
+    ! REAL*8, dimension(0:3) :: Fn, F
+    REAL*8 funcio, factor, x
+    REAL*8 re, fe, rhoe, rhos, alpha, beta, A, B, kappa, lambda, Fn(0:3), F(0:3), eta, FFe
+    COMMON /ZhouPARAMS/ re, fe, rhoe, rhos, alpha, beta, A, B, kappa, lambda, Fn, F, eta, FFe
+
+    x = r / re
+    der_pot_ZHOU_Pb = (  funcio(x,A,alpha,kappa) * factor(x,A,alpha,kappa) &
+                       - funcio(x,B,beta,lambda) * factor(x,B,beta,lambda)   ) / re
+
+    return
+END FUNCTION der_pot_ZHOU_Pb
+
+SUBROUTINE embedding_Pb_Zhou(rhored,FZ,dFdrhored)
+    IMPLICIT NONE
+    REAL*8, intent(in) :: rhored
+    REAL*8, intent(out) :: FZ, dFdrhored
+    INTEGER i
+    REAL*8 rhon, rho0, rho
+    REAL*8 re, fe, rhoe, rhos, alpha, beta, A, B, kappa, lambda, Fn(0:3), F(0:3), eta, FFe
+    COMMON /ZhouPARAMS/ re, fe, rhoe, rhos, alpha, beta, A, B, kappa, lambda, Fn, F, eta, FFe
+
+    rhon=0.85d0*rhoe
+    rho0=1.15d0*rhoe
+    rho = rhored*rhoe
+
+    FZ = 0d0
+    dFdrhored = 0d0
+    if (rho .lt. rhon) then
+        do i = 0, 3
+            FZ = FZ + Fn(i)*(rho/rhon-1d0)**dble(i)
+            dFdrhored = dFdrhored + dble(i)*Fn(i)*(rho/rhon-1d0)**dble(i-1)
+        enddo
+        dFdrhored = dFdrhored * rhoe / rhon
+    elseif (rho .lt. rho0) then
+        do i = 0, 3
+            FZ = FZ + F(i)*(rho/rhoe-1d0)**dble(i)
+            dFdrhored = dFdrhored + dble(i)*F(i)*(rho/rhoe-1d0)**dble(i-1)
+        enddo
+        ! dFdrhored = dFdrhored * rhoe / rhoe
+    elseif (rho .ge. rho0) then
+        FZ = FFe * (1d0 - eta*dlog(rho/rhos)) * (rho/rhos)**eta
+        dFdrhored = -FFe * eta**2d0 * (rho/rhos)**(eta-1d0) * dlog(rho/rhos) * rhoe / rhos 
+    else
+        print*, "ERROR: rho out of bounds"
+        stop
+    endif
+    
+    return
+END SUBROUTINE embedding_Pb_Zhou
+SUBROUTINE electro_Zhou(r,psi,dpsidr)
+! returns the electronic density of the LM (Zhou model)
+    IMPLICIT NONE
+    REAL*8, intent(in) :: r
+    REAL*8, intent(out) ::  psi, dpsidr 
+    REAL*8 funcio, factor
+    REAL*8 re, fe, rhoe, rhos, alpha, beta, A, B, kappa, lambda, Fn(0:3), F(0:3), eta, FFe
+    COMMON /ZhouPARAMS/ re, fe, rhoe, rhos, alpha, beta, A, B, kappa, lambda, Fn, F, eta, FFe
+    
+    psi = funcio(r/re, Fe, beta, lambda) / rhoe
+    dpsidr = funcio(r/re, Fe, beta, lambda) * factor(r/re, Fe, beta, lambda) / rhoe / re
+    return
+END SUBROUTINE electro_Zhou
+
 REAL*8 FUNCTION USladek(r)
 	IMPLICIT NONE
 	INTEGER k

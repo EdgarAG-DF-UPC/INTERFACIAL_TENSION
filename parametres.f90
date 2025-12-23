@@ -46,3 +46,77 @@ MODULE PARAMETRES_EAM
     REAL*8, dimension(3), parameter :: p1=(/ 3.0511d0, 0d0, 5.1531d0 /)
     REAL*8, parameter :: p2=1.2200d0
 END MODULE PARAMETRES_EAM
+
+MODULE PARAMETRES_ZHOU
+    IMPLICIT NONE
+    CONTAINS
+    SUBROUTINE SET_PARAMETRES_ZHOU(elem, versio, reO, feO, rhoeO, rhosO, alphaO, betaO, &
+                            AO, BO, kappaO, lambdaO, FnO, FO, etaO, FFeO)
+        IMPLICIT NONE
+        CHARACTER*2, intent(in) :: elem, versio
+        CHARACTER*2, dimension(1:16) :: elements
+        REAL*8, dimension(1:16) :: re, fe, rhoe, rhos, alpha, beta, A, B, kappa, lambda, eta, FFe
+        REAL*8, dimension(1:16,0:3) :: Fn, F
+        REAL*8, intent(out) :: reO, feO, rhoeO, rhosO, alphaO, betaO, AO, BO, kappaO, lambdaO,&
+                            FnO(0:3), FO(0:3), etaO, FFeO
+        CHARACTER*6 cnt    
+        INTEGER ielement
+        !   PARENT DIRECTORY:
+        CHARACTER*100 parent
+        COMMON /OTHERS/ parent
+
+        OPEN(14, FILE=trim(parent)//"/TAULES/PARAMS_ZHOU"//versio//".tab")
+        READ(14,*) cnt, elements
+        ielement = findloc(array=elements, value=elem, dim=1)
+        ! ielement = 0
+        ! do i = 1, size(elements)
+        !     if (trim(elements(i)) == trim(elem)) then
+        !         ielement = i
+        !         exit
+        !     end if
+        ! end do
+
+        if (ielement == 0) then
+            print *, "ERROR: element not found: '", elem, "'"
+            stop
+        end if
+
+        READ(14,*) cnt, re
+        reO = re(ielement)
+        READ(14,*) cnt, fe
+        feO = fe(ielement)
+        READ(14,*) cnt, rhoe
+        rhoeO = rhoe(ielement)
+        READ(14,*) cnt, rhos
+        rhosO = rhos(ielement)
+        READ(14,*) cnt, alpha
+        alphaO = alpha(ielement)
+        READ(14,*) cnt, beta
+        betaO = beta(ielement)
+        READ(14,*) cnt, A
+        AO = A(ielement)
+        READ(14,*) cnt, B
+        BO = B(ielement)
+        READ(14,*) cnt, kappa
+        kappaO = kappa(ielement)
+        READ(14,*) cnt, lambda
+        lambdaO = lambda(ielement)
+        READ(14,*) cnt, Fn(:,0)
+        READ(14,*) cnt, Fn(:,1)
+        READ(14,*) cnt, Fn(:,2)
+        READ(14,*) cnt, Fn(:,3)
+        FnO(:) = Fn(ielement, :)
+        READ(14,*) cnt, F(:,0)
+        READ(14,*) cnt, F(:,1)
+        READ(14,*) cnt, F(:,2)
+        READ(14,*) cnt, F(:,3)
+        FO(:) = F(ielement, :)
+        READ(14,*) cnt, eta
+        etaO = eta(ielement)
+        READ(14,*) cnt, FFe
+        FFeO = FFe(ielement)
+        CLOSE(14)
+
+        return
+    END SUBROUTINE SET_PARAMETRES_ZHOU
+END MODULE PARAMETRES_ZHOU

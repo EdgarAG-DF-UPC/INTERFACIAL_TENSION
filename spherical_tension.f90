@@ -9,6 +9,7 @@ PROGRAM ST
     USE PARAMETRES_LJ
     USE PARAMETRES_EAM
     USE PARAMETRES_SLADEK
+    USE PARAMETRES_ZHOU
     IMPLICIT NONE    
     INTERFACE
         subroutine remove_integer(list, element)
@@ -85,6 +86,7 @@ PROGRAM ST
     REAL*8 Re(1:3), De(1:3), ZA, ZB ! Paràmetres dels models TTS
     REAL*8 U_short, U_long, dU_long, dU_short ! Contribucions al model TTS
     REAL*8 Us, Ul, delr, dUl, dUs, r0 ! Contribucions al model TTS    
+    REAL*8 reZ, feZ, rhoeZ, rhosZ, alphaZ, betaZ, AZ, BZ, kappaZ, lambdaZ, FnZ(0:3), F0Z(0:3), etaZ, FFeZ
 !   MAGNITUDS RADIALS:
     REAL*8, dimension(:), allocatable :: r, gdr, z, r_ann, dens, num, num_he, num_li, num_pb, pn, pk, pv, pvaver, pvp
     INTEGER nr0, nr1, nr
@@ -97,7 +99,9 @@ PROGRAM ST
 !   RADIS:
     REAL*8 MSR, Rd, Rd2, minDISTTOCM, maxDISTTOCM
 !   PERIODIC BOUNDARY CONDITIONS:
-    LOGICAL POTS, SETPBC, EAM, Belashchenko, Awad, Yukawa
+    LOGICAL POTS, SETPBC, EAM, Awad, Yukawa
+    LOGICAL Zhou_01, Zhou_04!, Zhou
+    LOGICAL Belashchenko_Li, Belashchenko_Pb!, Belashchenko
 !   OMP:
     INTEGER thread_id
 !   CPU TIME and SYSTEM CLOCK:
@@ -108,11 +112,14 @@ PROGRAM ST
 !   PARENT DIRECTORY:
     CHARACTER*100 parent
 !   COMMON BLOCKS:
-    COMMON/PbHePARAMS/aa,bb,cc,dd,ee,ff,gg,hh,ii,jj
-    COMMON/PbPbPARAMS/aaa,rp,aim
-    COMMON/LiLiPARAMS/PSI,Ae,Be,Ce,me
-    COMMON/CAPSA/boxl,boxh
-    COMMON/CONVERS/ Eh, Rbohr
+    COMMON /PbHePARAMS/ aa,bb,cc,dd,ee,ff,gg,hh,ii,jj
+    COMMON /PbPbPARAMS/ aaa,rp,aim
+    COMMON /LiLiPARAMS/ PSI,Ae,Be,Ce,me
+    COMMON /ZhouPARAMS/ reZ, feZ, rhoeZ, rhosZ, alphaZ, betaZ, AZ, BZ, kappaZ, lambdaZ, FnZ, F0Z, etaZ, FFeZ
+    ! REAL*8 re, fe, rhoe, rhos, alpha, beta, A, B, kappa, lambda, Fn(0:3), F(0:3), eta, FFe
+    COMMON /CAPSA/ boxl,boxh
+    COMMON /CONVERS/ Eh, Rbohr
+    COMMON /OTHERS/ parent
 
     liquid(1)%massa = massa_Li
     liquid(2)%massa = massa_Pb
@@ -139,6 +146,7 @@ PROGRAM ST
     call SETFF()
     call PARAMETRES()
     call WRITE_POTS(POTS)
+    if (PRINTALL) print*, "ALL POTENTIALS ARE SET!"
 
     ! FIXEM LES DIMENSIONS DE CADA ARRAY:
     allocate(particle(N))
@@ -206,6 +214,7 @@ PROGRAM ST
     open(18, FILE="thermo_data.out")
     read(18,*)
     temps_ini = 0d0
+
     do s = sni, snf
         if (PRINTALL) then
             write(*,*)
@@ -319,7 +328,7 @@ PROGRAM ST
             print*, n3, "-->", NPb
             stop
         endif
-        
+
         read(18,*) RTD ! RTD%step, RTD%temperatura, RTD%pressio, RTD%volum, RTD%enertot, &
 
 ! Identificació de clústers:
@@ -352,7 +361,6 @@ PROGRAM ST
             do k = 1, size(ATS_cluster)
                 i = ATS_cluster(k)
                 coord(k) = He(i)%posicio(p) - boxl(p)!coord(k) = pos_He(i,p) - boxl(p)
-                ! print*, He(i)%posicio(p), "---->", coord(k)
                 masscl(k) = massa_He
             enddo            
             poscm(p) = COM(coord, size(ATS_cluster), Box, masscl, .True.) + boxl(p) !particle(NLi+NPb+1:N)%massa
@@ -585,7 +593,7 @@ PROGRAM ST
 CONTAINS
     SUBROUTINE PARAMETRES()
         IMPLICIT NONE
-        if (BELASHCHENKO) then
+        if (BELASHCHENKO_Li) then
             print*, "Belashchenko EAM"
             me = 1.5d0 !Belashchenko/Fraile
             PSI(0) = 1d0 !Belashchenko/Fraile
@@ -656,11 +664,24 @@ CONTAINS
         endif
 
         ! Belashchenko EAM Pb
-        rp(1) = 2.60d0 !Angs
-        rp(2) = 4.60d0 !Angs
-        rp(3) = 7.60d0 !Angs
-        rp(4) = 9.01d0 !Angs
-
+        if (Belashchenko_Pb) then
+            rp(1) = 2.60d0 !Angs
+            rp(2) = 4.60d0 !Angs
+            rp(3) = 7.60d0 !Angs
+            rp(4) = 9.01d0 !Angs
+            ! open(97, file = "/users/edgar/BUBBLES_NEW/TAULES/Aim.Pb.table")
+            open(97, file=trim(parent)//"/TAULES/Aim.Pb.table")
+            do m = 0, 8
+                read(97,*) aim, aaa(1,m), aaa(2,m), aaa(3,m)
+            enddo
+            close(97)
+        elseif (Zhou_01) then
+            call SET_PARAMETRES_ZHOU("Pb", "01", reZ, feZ, rhoeZ, rhosZ, alphaZ, betaZ, AZ, BZ,&
+                                    kappaZ, lambdaZ, FnZ, F0Z, etaZ, FFeZ)
+        elseif (Zhou_04) then
+            call SET_PARAMETRES_ZHOU("Pb", "04", reZ, feZ, rhoeZ, rhosZ, alphaZ, betaZ,&
+                                    AZ, BZ, kappaZ, lambdaZ, FnZ, F0Z, etaZ, FFeZ)
+        endif
         ! Toennies-Tang-Sheng
         ! open(17,file="/users/edgar/BUBBLES_NEW/TAULES/TTS.table")
         open(17,file=trim(parent)//"/TAULES/TTS.table")
@@ -687,12 +708,7 @@ CONTAINS
         Re(3) = 5.608d0
         De(3) = 3.482d-5
         
-        ! open(97, file = "/users/edgar/BUBBLES_NEW/TAULES/Aim.Pb.table")
-        open(97, file=trim(parent)//"/TAULES/Aim.Pb.table")
-        do m = 0, 8
-            read(97,*) aim, aaa(1,m), aaa(2,m), aaa(3,m)
-        enddo
-        close(97)
+        
         
     END SUBROUTINE PARAMETRES
 
@@ -702,6 +718,12 @@ CONTAINS
         FULLLJ = .False.
         EAMLJ =  .False.
         EAMTTSS = .False.
+        Awad = .False.
+        Belashchenko_Li = .False.
+        Belashchenko_Pb = .False.
+        Zhou_01 = .False.
+        Zhou_04 = .False.
+        YUKAWA = .False.
         if (force_field .eq. 0) then
             FULLLJ = .True.
         elseif (force_field .eq. 1) then
@@ -710,25 +732,38 @@ CONTAINS
         elseif (force_field .eq. 2) then
             EAMTTSS = .True.
             EAM = .True.
-            BELASHCHENKO = .True.
-            YUKAWA = .False.
-            AWAD = .False.
+            ! BELASHCHENKO = .True.
+            Belashchenko_Li = .True.
+            Belashchenko_Pb = .True.
         elseif (force_field .eq. 3) then
             EAMTTSS = .True.
             EAM = .True.
-            BELASHCHENKO = .False.
+            ! BELASHCHENKO = .False.
+            Belashchenko_Pb = .True.
             AWAD = .True.
         elseif (force_field .eq. 4) then
             EAMTTSS = .True.
             EAM = .True.
-            BELASHCHENKO = .True.
-            YUKAWA = .True.
-            AWAD = .False.
+            ! BELASHCHENKO = .True.
+            Belashchenko_Li = .True.
+            Belashchenko_Pb = .True.
+            AWAD = .True.
+        elseif ((force_field .eq. 5) .or. (force_field .eq. 6)) then
+            EAMTTSS = .True.
+            EAM = .True.
+            ! BELASHCHENKO = .False.
+            AWAD = .True.
+            if (force_field .eq. 5) then
+                Zhou_01 = .True.
+            elseif (force_field .eq. 6) then
+                Zhou_04 = .True.
+            endif
+
+
         else
             print*, "ERROR: Camp de forces no vàlid!"
             stop
         endif
-        ! if (EAMTTSS) print*, "EAM + TTS + S"
 
     END SUBROUTINE SETFF
 
@@ -838,7 +873,7 @@ CONTAINS
         CHARACTER*4, INTENT(IN) :: parella
         REAL*8, INTENT(IN) :: r
         REAL*8 U_LJ, DUMMY
-        REAL*8 pot_eam_Li, pot_eam_Pb, pot_eam_LiPb, pot_aeam_LiPb
+        REAL*8 pot_eam_Li, pot_eam_Pb, pot_eam_LiPb, pot_aeam_LiPb, pot_zhou_Pb
         REAL*8 pot_aeam_li, der_pot_aeam_li
         REAL*8 UTTS_long, UTTS_short, USladek
         REAL*8 X, CORRECCIO_YUKAWA
@@ -849,7 +884,7 @@ CONTAINS
             if (FULLLJ) then
                 POTENCIAL = eps_LiLi*U_LJ(r/sig_LiLi)
             elseif (EAMLJ .or. EAMTTSS) then
-                if (Belashchenko) then
+                if (Belashchenko_Li) then
                     POTENCIAL = pot_EAM_Li(r)
                     if (Yukawa) POTENCIAL = POTENCIAL + CORRECCIO_YUKAWA(r, "potencial", 1, 1, X) 
                 elseif (Awad) then
@@ -864,7 +899,7 @@ CONTAINS
                 POTENCIAL = eps_PbPb*U_LJ(r/sig_PbPb)
             elseif (EAMLJ .or. EAMTTSS) then
                 POTENCIAL = pot_EAM_Pb(r)
-                if (Belashchenko .and. Yukawa) POTENCIAL = POTENCIAL + CORRECCIO_YUKAWA(r, "potencial", 2, 2, X)
+                if (Belashchenko_Pb .and. Yukawa) POTENCIAL = POTENCIAL + CORRECCIO_YUKAWA(r, "potencial", 2, 2, X)
             else
                 print*, "PROBLEMA AMB EL POTENCIAL Pb-Pb..."
                 stop
@@ -893,11 +928,13 @@ CONTAINS
             if (FULLLJ .or. EAMLJ) then
                 POTENCIAL = eps_LiPb*U_LJ(r/sig_LiPb)
             elseif (EAMTTSS) then
-                if (Belashchenko) then
+                if (Belashchenko_Li .and. Belashchenko_Pb) then
                     POTENCIAL = eps_84*pot_EAM_LiPb(r/sig_84)
                     if (Yukawa) POTENCIAL = POTENCIAL + CORRECCIO_YUKAWA(r, "potencial", 1, 2, X)
                 elseif (Awad) then
                     POTENCIAL = pot_AEAM_LiPb(r)
+                elseif (Zhou_01 .or. Zhou_04) then
+                    POTENCIAL = pot_Zhou_Pb(r)
                 endif
             else
                 print*, "PROBLEMA AMB EL POTENCIAL Li-Pb..."
@@ -928,7 +965,8 @@ CONTAINS
         CHARACTER*4, INTENT(IN) :: parella
         REAL*8, INTENT(IN) :: r
         REAL*8 dU_LJ, DUMMY
-        REAL*8 der_pot_eam_Li, der_pot_eam_Pb, der_pot_eam_LiPb, der_pot_aeam_li, der_pot_AEAM_LiPb
+        REAL*8 der_pot_eam_Li, der_pot_eam_Pb, der_pot_eam_LiPb, der_pot_aeam_li, der_pot_AEAM_LiPb,&
+        der_pot_ZHOU_Pb
         REAL*8 dUTTS_long, dUTTS_short, dUSladek
         REAL*8 X, CORRECCIO_YUKAWA
 
@@ -938,7 +976,7 @@ CONTAINS
             if (FULLLJ) then
                 DERIVADA = (eps_LiLi/sig_LiLi)*dU_LJ(r/sig_LiLi)
             elseif (EAMLJ .or. EAMTTSS) then
-                if (Belashchenko) then
+                if (Belashchenko_Li) then
                     DERIVADA = der_pot_EAM_Li(r)
                     if (Yukawa) DERIVADA = DERIVADA + CORRECCIO_YUKAWA(r, "derivada_", 1, 1, X)
                 elseif (Awad) then
@@ -953,7 +991,7 @@ CONTAINS
                 DERIVADA = (eps_PbPb/sig_PbPb)*dU_LJ(r/sig_PbPb)
             elseif (EAMLJ .or. EAMTTSS) then
                 DERIVADA = der_pot_EAM_Pb(r)
-                if (Belashchenko .and. Yukawa) DERIVADA = DERIVADA + CORRECCIO_YUKAWA(r, "derivada_", 2, 2, X)
+                if (Belashchenko_Pb .and. Yukawa) DERIVADA = DERIVADA + CORRECCIO_YUKAWA(r, "derivada_", 2, 2, X)
             else
                 print*, "PROBLEMA AMB EL POTENCIAL Pb-Pb..."
                 stop
@@ -982,11 +1020,13 @@ CONTAINS
             if (FULLLJ .or. EAMLJ) then
                 DERIVADA = (eps_LiPb/sig_LiPb)*dU_LJ(r/sig_LiPb)
             elseif (EAMTTSS) then
-                if (Belashchenko) then
+                if (Belashchenko_Li .and. Belashchenko_Pb) then
                     DERIVADA = (eps_84/sig_84)*der_pot_EAM_LiPb(r/sig_84)
                     if (Yukawa) DERIVADA = DERIVADA + CORRECCIO_YUKAWA(r, "derivada_", 1, 2, X)
                 elseif (Awad) then
                     DERIVADA = der_pot_AEAM_LiPb(r)
+                elseif (Zhou_01 .or. Zhou_04) then
+                    DERIVADA = der_pot_ZHOU_Pb(r)
                 endif
             else
                 print*, "PROBLEMA AMB EL POTENCIAL Li-Pb..."
