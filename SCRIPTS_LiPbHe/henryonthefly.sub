@@ -1,0 +1,12 @@
+#!/bin/bash
+#SBATCH -J NomCalcul
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=8
+#SBATCH -p NomParticio
+
+export OMP_NUM_THREADS=4
+
+directori=$( pwd )
+cd $directori
+
+mpirun -np 4 python3 ../../../../../SCRIPTS_LiPb/HENRY_INF_DIL.py

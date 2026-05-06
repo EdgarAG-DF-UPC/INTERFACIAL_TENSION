@@ -1,0 +1,12 @@
+#!/bin/bash
+#SBATCH -J NomCalcul
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=4
+#SBATCH -p NomParticio
+
+export OMP_NUM_THREADS=4 
+
+directori=$( pwd )
+cd $directori
+
+lmp_mpi -sf omp -in in.LiHePb

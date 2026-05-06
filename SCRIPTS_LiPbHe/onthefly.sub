@@ -1,0 +1,19 @@
+#!/bin/bash
+#SBATCH -J NomCalcul
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=NumTasques
+#SBATCH -p NomParticio
+
+export OMP_NUM_THREADS=4
+
+directori=$( pwd )
+cd $directori
+
+while getopts p:n:  flag; do
+        case "${flag}" in
+		p) parent=${OPTARG};;
+		n) numprocs=${OPTARG};;
+	esac
+done	
+
+mpirun -np ${numprocs} python3 ${parent}/SCRIPTS_LiPbHe/src/MAIN.py

@@ -1,0 +1,24 @@
+# -------------------------------------------------------------------------------------------------
+# MÒDUL DE POTENCIAL YUKAWA - CORRECCIÓ BELASHCHENKO 2019
+
+print "--------------------------------- ADDICIÓ POTENCIAL YUKAWA----------------------------------"
+
+variable a_LiLi equal qLi*qLi*14.399
+variable a_PbPb equal qPb*qPb*14.399
+variable a_LiPb equal qLi*qPb*14.399
+
+pair_style	hybrid/overlay  eam/alloy table linear 736 table linear 736 table linear 736 yukawa 1.10 rcutoff yukawa 1.10 rcutoff yukawa 1.10 rcutoff
+pair_coeff	* * eam/alloy LiPb.eam.alloy Li NULL Pb
+pair_coeff	1 2 table 1 ../../../../TAULES/LiHe.table SHENGTANG_LiHe
+pair_coeff	2 2 table 2 ../../../../TAULES/HeHe.table SHENGTANG_HeHe
+pair_coeff	2 3 table 3 ../../../../TAULES/PbHe.table SLADEK_PbHe
+pair_coeff	1 1 yukawa 1 ${a_LiLi}
+pair_coeff	1 3 yukawa 2 ${a_LiPb}
+pair_coeff	3 3 yukawa 3 ${a_PbPb}
+
+fix		1 all nvt temp temperatura temperatura Tdamp
+run             runs_NVT
+unfix           1
+
+# -------------------------------------------------------------------------------------------------
+
