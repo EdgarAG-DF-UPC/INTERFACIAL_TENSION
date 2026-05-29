@@ -647,7 +647,3 @@ class METHOD:
             os.chdir("../")
         #############
         return
-    
-    def PROVA():
-        if master: print("TONTO QUIEN LO LEA")
-        return
