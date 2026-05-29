@@ -101,7 +101,6 @@ class METHOD:
                         r, P_C, P_K, [N_LI, N_PB, N_HE], RS, Δp = ANALITZA(b, p, N_LI, N_PB, N_HE, P_K, P_C, RS, Δp)
             MPI.COMM_WORLD.Barrier()
             try:
-                # lmp.command("read_restart restart."+str(BLOCK0)+"_"+str(nprocs-1))
                 if RESTART:
                     lmp.command("read_restart "+RSTFILE)
                     COMANDES.SET_REGIONS(lmp, x0, xf, y0, yf, z0, zf, RBOMB)
@@ -109,14 +108,10 @@ class METHOD:
                     COMANDES.SET_THERMO(lmp, 0, ["step", "temp", "press", "vol", "pe", "ke", "etail"])
                     COMANDES.SET_VARIABLES(lmp)
                     COMANDES.SET_POTENTIAL(lmp, CDEAM=MODEL=="FRAILE")
-                # if EQUIL: ADDITIONAL.EQUILIBRACIO_NVT(lmp, temperatura, Tdamp, Nevery, runs_NVT)
                 if AFEGEIX_YUKAWA: ADDITIONAL.ADD_YUKAWA(lmp, N_Pb, N_Li, rcutoff, temperatura, Tdamp, runs_NVT)
                 COMANDES.FIX_ENSEMBLE(lmp, temperatura, Tdamp, pressio, Pdamp, ensemble)
                 COMANDES.GROUPS(lmp, [["Li", [1]], ["He", [2]], ["Pb", [3]], ["liquid", [1, 3]]])
-                # printonmaster("PROC", me)
-                # quit()
                 if FUNCIONS.evalua(INTEGRATE):
-                    # for proc in range(proc0, nprocs):
                     for proc in range(nprocs):
                         printonmaster("PROC")
                         print(proc, me)
@@ -175,7 +170,6 @@ class METHOD:
                 last = int(BLOCK0)
                 LOST = False
                 os.chdir(CURRENTDIR)
-    # for block in range(100):
         else:
             last = int(BLOCK0)
             LOST = False
@@ -185,9 +179,7 @@ class METHOD:
             MPI.COMM_WORLD.Barrier()
             for proc in range(nprocs):
                 if PRESSIONS_PARCIALS: ADDITIONAL.PRESSIONS_PARCIALS(lmp, Nevery, proc)
-                    # lmp.file("PRESSIONS_PARCIALS")
                 if DIFUSIONS_Li_He_Pb: ADDITIONAL.DIFUSIONS(lmp, Nevery, str(int(float(runs_NPT)/float(Nevery)/100)), str(float(runs_NPT)/100), proc)
-                    # lmp.file("DIFUSIONS_Li_He_Pb")
                 COMANDES.SET_OUTPUT(lmp, proc, Nevery, str(int(float(runs_NPT)/float(Nevery))), runs_NPT)
 
                 lmp.command("run " + str(runs_NPT))
@@ -340,20 +332,15 @@ class METHOD:
                     UB = np.zeros(nprocs)
                     RMSD = np.zeros(nprocs)
                     RMCD = np.zeros(nprocs)
-                    # FUNCIONS.CreateBornTables(λ, 1.)
-                    # FUNCIONS.CreateBornTables(0., (1.+λ))
                     FUNCIONS.CreateBornTables(0., 1., kappa=λ)
                 MPI.COMM_WORLD.Barrier()
                 for proc in range(nprocs):
-                    # COMANDES.SET_POTENTIAL(lmp, Born=True, Lambda=λ)
                     COMANDES.SET_POTENTIAL(lmp, BornTable=True, CDEAM=MODEL=="FRAILE")
                     COMANDES.SET_OUTPUT(lmp, "LAM_"+str(k)+"_"+str(proc), Nevery, str(int(0.75*float(runs_NPT)/float(Nevery))), runs_NPT)
-                    # ADDITIONAL.BORN(lmp, Nevery, str(int(0.75*float(runs_NPT)/float(Nevery))), runs_NPT, "LAM_"+str(k)+"_"+str(proc))
                     if PRESSIONS_PARCIALS: ADDITIONAL.PRESSIONS_PARCIALS(lmp, Nevery, "LAM_"+str(k)+"_"+str(proc))
                     if DIFUSIONS_Li_He_Pb: ADDITIONAL.DIFUSIONS(lmp, Nevery, str(int(0.75*float(runs_NPT)/float(Nevery))), runs_NPT, "LAM_"+str(k)+"_"+str(proc))
                     lmp.command("run " + str(runs_NPT))
                     COMANDES.UNFIX_UNCOMPUTE(lmp)
-                    # ADDITIONAL.UNBORN(lmp)
                     if DIFUSIONS_Li_He_Pb: ADDITIONAL.UNDIF(lmp)
                     if PRESSIONS_PARCIALS: ADDITIONAL.UNPRES(lmp)
                     lmp.command("write_restart restart."+str(block)+"_LAM_"+str(k))
@@ -376,7 +363,6 @@ class METHOD:
                 shutil.move("../LAM_"+str(k)+"_"+str(me)+"_center_mass.out", "center_mass.out")
                 shutil.move("../LAM_"+str(k)+"_"+str(me)+"_thermo_data.out", "thermo_data.out")
                 shutil.move("../LAM_"+str(k)+"_"+str(me)+"_averages.out", "averages.out")
-                #shutil.move("../LAM_"+str(k))+"_"+str(me)+"_born_tts_s.out", "born_tts_s.out")
                 try:
                     shutil.move("../LAM_"+str(k)+"_"+str(me)+"_partial_pressures.out", "partial_pressures.out")
                     shutil.move("../LAM_"+str(k)+"_"+str(me)+"_dif.out", "dif.out")
@@ -432,8 +418,6 @@ class METHOD:
                                                 g_22 = float(line[8])
                                                 X.append(r)
                                                 Y.append(r*r*(N_Li*g_12*V_12(r-λ*2.5*0.5291772)) + N_Pb*g_23*V_23(r-λ*2.5*0.5291772) + (N_He-1)*g_22*V_22(r-λ*2.5*0.5291772))
-                                                # Y.append(r*r*np.exp(-r/1.)*(N_Li*g_12 + N_Pb*g_23 + (N_He-1)*g_22))
-                                                # Y.append(r*r*np.exp(-r/1.)*(N_Li*g_12 + N_Pb*g_23))
                                     X = np.array(X)
                                     Y = np.array(Y)
                                     UB[proc] = np.trapz(Y, X) / vol
@@ -468,7 +452,6 @@ class METHOD:
                                         +"\t{:.6f}".format(UB[proc])+"\n")
                     try:
                         VBorn.append(np.mean(UB))
-                        # ΔG.append(np.trapz(VBorn, Λ)* 4*np.pi * N_He * 12.483)
                         ΔG.append(np.trapz(VBorn, Λ)* 4*np.pi * N_He)
                         Rd.append(np.mean(RMSD))
                         δ_Rd.append(np.std(RMSD) / np.sqrt(len(RMSD)-1))
@@ -484,7 +467,6 @@ class METHOD:
                         δ_Rd_eqm.append(np.std(Reqm) / np.sqrt(len(Reqm)-1))
 
                         ΔA.append(4.*np.pi*(Rd[k]**2. - Rd[0]**2.))
-                        # FILEOUT = open("TEST_AREA_"+str(block)+".out", "a")
                         FILEOUT = open("../TEST_AREA_"+str(block)+".out", "a")
                         FILEOUT.write("{:.5f}".format(Λ[k])+
                                     "\t{:.4f}".format(Rd[k])+"\t{:.4f}".format(δ_Rd[k])+
@@ -554,11 +536,6 @@ class METHOD:
         ###############################################################
 
         ###############################################################
-        # if master and "tensio.x" not in os.listdir("./"):
-        #     FUNCIONS.CreateExecutable(PARENTDIR+"/INTERFACIAL_TENSION/",
-        #                               "planar.interftens.x",
-        #                               "tensio.x")
-        #####
         for block in range(int(TOT/nprocs)):
             for proc in range(nprocs):
                 if PRESSIONS_PARCIALS: ADDITIONAL.PRESSIONS_PARCIALS(lmp, Nevery, proc)
@@ -595,16 +572,14 @@ class METHOD:
                     os.chdir("TENSIO"+str(block)+"_"+str(proc))
                     ANALITZA(block, proc)
                     os.chdir("../")
-        #####
         return lmp
 
     def PLANAR_IK(lmp, TOT=25*nprocs):
         if master and "tensio.x" not in os.listdir("./"):
             FUNCIONS.CreateExecutable(PARENTDIR+"/INTERFACIAL_TENSION/",
                                       "planar.interftens.x",
-                                      "tensio.x")
+                                      "tensio.x")        
         
-        #############
         for block in range(int(TOT/nprocs)):
             for proc in range(nprocs):
                 if PRESSIONS_PARCIALS: ADDITIONAL.PRESSIONS_PARCIALS(lmp, Nevery, proc)
@@ -631,7 +606,6 @@ class METHOD:
             shutil.move("../ave_stress_"+str(me)+".out", "ave_stress.out")
             shutil.move("../pressure_tensor_"+str(me)+".out", "pressure_tensor.out")
             shutil.move("../"+str(me)+"_velocities.out", "velocities.out")
-            # shutil.move("../"+str(me)+"_stress_per_atom.out", "stress_per_atom.out")
             try:
                 shutil.move("../"+str(me)+"_partial_pressures.out", "partial_pressures.out")
                 shutil.move("../"+str(me)+"_dif.out", "dif.out")
@@ -645,5 +619,5 @@ class METHOD:
             os.remove("xyz.out")
             os.remove("velocities.out")
             os.chdir("../")
-        #############
+        
         return
